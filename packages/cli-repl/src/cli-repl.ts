@@ -220,7 +220,10 @@ class CliRepl {
       });
     }
 
-    const editor = new Editor({ internalState: this.mongoshRepl.runtimeState().internalState });
+    const editor = new Editor({
+      tmpdir: this.shellHomeDirectory.roamingPath('editor'),
+      internalState: this.mongoshRepl.runtimeState().internalState
+    });
     editor.activate();
 
     const commandLineLoadFiles = this.cliOptions.fileNames ?? [];

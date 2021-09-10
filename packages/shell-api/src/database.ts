@@ -1424,7 +1424,7 @@ export default class Database extends ShellApiWithMongoClass {
     await this._mongo.setSecondaryOk();
   }
 
-  @serverVersions(['4.4.0', ServerVersions.latest])
+  @serverVersions(['3.1.0', ServerVersions.latest])
   @topologies([Topologies.ReplSet, Topologies.Sharded])
   @apiVersions([1])
   @returnsPromise
@@ -1443,6 +1443,7 @@ export default class Database extends ShellApiWithMongoClass {
     return cursor;
   }
 
+  @serverVersions(['4.4.0', ServerVersions.latest])
   @returnsPromise
   @returnType('AggregationCursor')
   async sql(sqlString: string, options?: Document): Promise<AggregationCursor> {

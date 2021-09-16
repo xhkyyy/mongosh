@@ -145,6 +145,7 @@ class MongoshNodeRepl implements EvaluationListener {
   loadNestingLevel = 0;
   redactHistory: 'keep' | 'remove' | 'remove-redact' = 'remove';
   rawValueToShellResult: WeakMap<any, ShellResult> = new WeakMap();
+  prettyTextResult: string;
 
   constructor(options: MongoshNodeReplOptions) {
     this.input = options.input;
@@ -156,6 +157,7 @@ class MongoshNodeRepl implements EvaluationListener {
     this.ioProvider = options.ioProvider;
     this.insideAutoCompleteOrGetPrompt = false;
     this._runtimeState = null;
+    this.prettyTextResult = '';
   }
 
   /**
@@ -651,7 +653,8 @@ class MongoshNodeRepl implements EvaluationListener {
    */
   onPrint(values: ShellResult[]): void {
     const joined = values.map((value) => this.formatShellResult(value)).join(' ');
-    this.output.write(joined + '\n');
+    this.prettyTextResult = joined;
+    // this.output.write(joined + '\n');
   }
 
   /**

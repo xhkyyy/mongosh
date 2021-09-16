@@ -225,7 +225,7 @@ class CliRepl {
       this.bus.emit('mongosh:start-loading-cli-scripts', { usesShellOption: !!this.cliOptions.shell });
       await this.loadCommandLineFilesAndEval(commandLineLoadFiles);
       if (!this.cliOptions.shell) {
-        await this.exit(0);
+        // await this.exit(0);
         return;
       }
     } else {
@@ -501,11 +501,12 @@ class CliRepl {
    */
   async exit(code?: number): Promise<never> {
     await this.close();
-    await this.onExit(code);
+    // await this.onExit(code);
     // onExit never returns. If it does, that's a bug.
-    const error = new MongoshInternalError('onExit() unexpectedly returned');
-    this.bus.emit('mongosh:error', error, 'fatal');
-    throw error;
+    // const error = new MongoshInternalError('onExit() unexpectedly returned');
+    // this.bus.emit('mongosh:error', error, 'fatal');
+    // throw error;
+    return new Promise<never>(resolve => {});
   }
 
   /** Read a file from disk. */

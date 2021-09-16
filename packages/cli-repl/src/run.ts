@@ -5,21 +5,23 @@ import { runMain } from 'module';
 import readline from 'readline';
 import askcharacter from 'askcharacter';
 import stream from 'stream';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 
-// eslint-disable-next-line complexity, @typescript-eslint/no-floating-promises
-(async() => {
+async function evalInternal(reqBodyStr: string): Promise<string> {
+  const reqBody = JSON.parse(reqBodyStr);
   if (process.env.MONGOSH_RUN_NODE_SCRIPT) {
     // For uncompiled mongosh: node /path/to/this/file script ... -> node script ...
     // FOr compiled mongosh: mongosh mongosh script ... -> mongosh script ...
     process.argv.splice(1, 1);
     (runMain as any)(process.argv[1]);
-    return;
+    return '';
   }
 
   let repl;
   let isSingleConsoleProcess = false;
   try {
     const options = parseCliArgs(process.argv);
+
     for (const warning of options._argParseWarnings) {
       console.warn(warning);
     }
@@ -64,10 +66,10 @@ import stream from 'stream';
       // connect to. Allow an environment variable to override this for testing.
       isSingleConsoleProcess = !!process.env.MONGOSH_FORCE_CONNECTION_STRING_PROMPT;
       if ((!options.connectionSpecifier &&
-            process.platform === 'win32' &&
-            process.stdin.isTTY &&
-            process.stdout.isTTY) ||
-          isSingleConsoleProcess) {
+        process.platform === 'win32' &&
+        process.stdin.isTTY &&
+        process.stdout.isTTY) ||
+        isSingleConsoleProcess) {
         try {
           isSingleConsoleProcess ||= require('get-console-process-list')().length === 1;
         } catch { /* ignore */ }
@@ -88,9 +90,15 @@ import stream from 'stream';
 
       const appName = `mongosh ${version}`;
       const shellHomePaths = getStoragePaths();
+      let funs = '(function(obj) { if((typeof obj.toArray) ==="undefined"){ print(JSON.stringify(obj)); } else { print(JSON.stringify(obj.toArray())); } })(';
+      funs += reqBody.funs;
+      funs += ') ';
       repl = new CliRepl({
         shellCliOptions: {
           ...options,
+          'quiet': true,
+          'eval': funs,
+          'norc': true,
         },
         mongocryptdSpawnPaths,
         input: process.stdin,
@@ -98,7 +106,8 @@ import stream from 'stream';
         onExit: process.exit,
         shellHomePaths: shellHomePaths
       });
-      await repl.start(driverUri, { appName, ...driverOptions });
+      await repl.start(reqBody.connect_string, { appName, ...driverOptions });
+      return repl.mongoshRepl.prettyTextResult;
     }
   } catch (e) {
     console.error(`${e.name}: ${e.message}`);
@@ -113,9 +122,57 @@ import stream from 'stream';
       await askcharacter({ input: process.stdin, output: process.stdout });
       process.stdout.write('\n');
     }
-    process.exit(1);
+    // process.exit(1);
   }
-})();
+  return '';
+}
+
+
+
+
+
+
+
+interface Post {
+  title: string;
+  content: string;
+};
+
+const posts: Post[] = [
+  {
+    title: 'Lorem ipsum',
+    content: 'Dolor sit amet'
+  }
+];
+
+const server = createServer((request, response) => {
+  if (request.method === 'POST' && request.url === '/mongodb_shell') {
+    let data = '';
+    request.on('data', (chunk) => {
+      data += chunk;
+    }).on('end', () => {
+      const cmd_response = evalInternal(data);
+      cmd_response.then((mongodbResText) => {
+        response.setHeader('Content-Type', 'application/json');
+        response.end(mongodbResText);
+      });
+    });
+  } else {
+    response.statusCode = 404;
+    response.end();
+  }
+});
+
+server.on('error', (e) => {
+  console.log(e);
+});
+server.listen(51234, () => {
+  console.log(`Server listening on port 51234`);
+});
+
+
+
+
 
 /**
  * Helper to set the window title for the terminal that stdout is
